@@ -29,11 +29,21 @@ use PapiAI\Core\ToolCall;
 use RuntimeException;
 
 /**
- * Mistral AI API Provider.
+ * Mistral AI API provider for PapiAI.
  *
- * Supports Mistral models including:
- * - mistral-large-latest (general purpose)
- * - mistral-embed (embeddings)
+ * Bridges PapiAI's core types (Message, Response, ToolCall) with Mistral's chat completions
+ * API, handling format conversion in both directions. Uses an OpenAI-compatible but distinct
+ * API format. Supports chat completions, streaming, tool calling, vision (multimodal),
+ * structured JSON output, and text embeddings.
+ *
+ * Authentication is via Bearer token in the Authorization header. All HTTP is done with
+ * ext-curl directly, with no HTTP abstraction layer.
+ *
+ * Supported models:
+ *   - mistral-large-latest (general-purpose, tool use, vision, structured output)
+ *   - mistral-embed (text embeddings)
+ *
+ * @see https://docs.mistral.ai/api/
  */
 class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
 {
@@ -43,6 +53,13 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
     public const MODEL_MISTRAL_LARGE = 'mistral-large-latest';
     public const MODEL_MISTRAL_EMBED = 'mistral-embed';
 
+    /**
+     * Create a new Mistral provider instance.
+     *
+     * @param string $apiKey          Mistral API key for Bearer token authentication
+     * @param string $defaultModel    Model to use when not specified in options
+     * @param int    $defaultMaxTokens Maximum output tokens when not specified in options
+     */
     public function __construct(
         private readonly string $apiKey,
         private readonly string $defaultModel = self::MODEL_MISTRAL_LARGE,
@@ -50,6 +67,30 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
     ) {
     }
 
+    /**
+     * Send a chat completion request to the Mistral API.
+     *
+     * Converts PapiAI Messages to Mistral's OpenAI-compatible format, sends the request,
+     * and parses the response back into a core Response object. Supports tools, vision,
+     * structured output, and custom generation parameters.
+     *
+     * @param array<Message> $messages Conversation history as PapiAI Message objects
+     * @param array{
+     *     model?: string,
+     *     tools?: array,
+     *     maxTokens?: int,
+     *     temperature?: float,
+     *     stopSequences?: array<string>,
+     *     outputSchema?: array,
+     * } $options Request options (model, tools, maxTokens, temperature, etc.)
+     *
+     * @return Response Parsed response containing text, tool calls, usage, and stop reason
+     *
+     * @throws AuthenticationException When the API key is invalid (HTTP 401)
+     * @throws RateLimitException      When rate limits are exceeded (HTTP 429)
+     * @throws ProviderException       When the API returns any other error (HTTP 4xx/5xx)
+     * @throws RuntimeException        When the cURL request itself fails
+     */
     public function chat(array $messages, array $options = []): Response
     {
         $payload = $this->buildPayload($messages, $options);
@@ -58,6 +99,26 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
         return Response::fromOpenAI($response, $messages);
     }
 
+    /**
+     * Stream a chat completion from the Mistral API using server-sent events.
+     *
+     * Yields StreamChunk objects as partial responses arrive. The final chunk
+     * has isComplete=true. Only text content is streamed.
+     *
+     * @param array<Message> $messages Conversation history as PapiAI Message objects
+     * @param array{
+     *     model?: string,
+     *     tools?: array,
+     *     maxTokens?: int,
+     *     temperature?: float,
+     *     stopSequences?: array<string>,
+     *     outputSchema?: array,
+     * } $options Request options (model, tools, maxTokens, temperature, etc.)
+     *
+     * @return iterable<StreamChunk> Stream of text chunks, ending with a completion marker
+     *
+     * @throws RuntimeException When the cURL request fails
+     */
     public function stream(array $messages, array $options = []): iterable
     {
         $payload = $this->buildPayload($messages, $options);
@@ -74,6 +135,22 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
         }
     }
 
+    /**
+     * Generate text embeddings via the Mistral Embeddings API.
+     *
+     * Converts one or more text inputs into vector representations using
+     * the mistral-embed model (or a custom model specified in options).
+     *
+     * @param string|array<string> $input  Text string or array of strings to embed
+     * @param array{model?: string} $options Embedding options (model override)
+     *
+     * @return EmbeddingResponse Embedding vectors with model info and token usage
+     *
+     * @throws AuthenticationException When the API key is invalid (HTTP 401)
+     * @throws RateLimitException      When rate limits are exceeded (HTTP 429)
+     * @throws ProviderException       When the API returns any other error (HTTP 4xx/5xx)
+     * @throws RuntimeException        When the cURL request itself fails
+     */
     public function embed(string|array $input, array $options = []): EmbeddingResponse
     {
         $model = $options['model'] ?? self::MODEL_MISTRAL_EMBED;
@@ -96,21 +173,33 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
         );
     }
 
+    /**
+     * Whether this provider supports tool/function calling.
+     */
     public function supportsTool(): bool
     {
         return true;
     }
 
+    /**
+     * Whether this provider supports vision (multimodal image input).
+     */
     public function supportsVision(): bool
     {
         return true;
     }
 
+    /**
+     * Whether this provider supports structured JSON output via response_format.
+     */
     public function supportsStructuredOutput(): bool
     {
         return true;
     }
 
+    /**
+     * Get the provider identifier string.
+     */
     public function getName(): string
     {
         return 'mistral';
@@ -263,7 +352,16 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
     }
 
     /**
-     * Make an API request.
+     * Send a synchronous POST request to the Mistral chat completions endpoint.
+     *
+     * @param array $payload JSON-encodable request body
+     *
+     * @return array Decoded JSON response from the API
+     *
+     * @throws AuthenticationException When the API key is invalid (HTTP 401)
+     * @throws RateLimitException      When rate limits are exceeded (HTTP 429)
+     * @throws ProviderException       When the API returns any other error (HTTP 4xx/5xx)
+     * @throws RuntimeException        When the cURL request itself fails
      */
     protected function request(array $payload): array
     {
@@ -301,9 +399,15 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
     /**
      * Throw the appropriate exception based on HTTP status code.
      *
-     * @throws AuthenticationException
-     * @throws RateLimitException
-     * @throws ProviderException
+     * Maps HTTP 401 to AuthenticationException, 429 to RateLimitException,
+     * and all other error codes to a generic ProviderException.
+     *
+     * @param int        $httpCode HTTP response status code
+     * @param array|null $data     Decoded JSON error response body
+     *
+     * @throws AuthenticationException When HTTP status is 401
+     * @throws RateLimitException      When HTTP status is 429
+     * @throws ProviderException       For all other HTTP error codes
      */
     protected function throwForStatusCode(int $httpCode, ?array $data): never
     {
@@ -334,9 +438,14 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
     }
 
     /**
-     * Make a streaming API request.
+     * Send a streaming POST request to the Mistral chat completions endpoint.
      *
-     * @return Generator<array>
+     * Buffers the full SSE response, then parses and yields individual event payloads.
+     * Each yielded array is a decoded JSON event from the stream.
+     *
+     * @param array $payload JSON-encodable request body (must include stream=true)
+     *
+     * @return Generator<int, array> Decoded JSON events from the SSE stream
      */
     protected function streamRequest(array $payload): Generator
     {
@@ -378,7 +487,16 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
     }
 
     /**
-     * Make an embeddings API request.
+     * Send a synchronous POST request to the Mistral embeddings endpoint.
+     *
+     * @param array $payload JSON-encodable request body with model and input fields
+     *
+     * @return array Decoded JSON response containing embedding vectors and usage
+     *
+     * @throws AuthenticationException When the API key is invalid (HTTP 401)
+     * @throws RateLimitException      When rate limits are exceeded (HTTP 429)
+     * @throws ProviderException       When the API returns any other error (HTTP 4xx/5xx)
+     * @throws RuntimeException        When the cURL request itself fails
      */
     protected function embeddingRequest(array $payload): array
     {
