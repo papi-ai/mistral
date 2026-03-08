@@ -18,14 +18,14 @@ use Generator;
 use PapiAI\Core\Contracts\EmbeddingProviderInterface;
 use PapiAI\Core\Contracts\ProviderInterface;
 use PapiAI\Core\EmbeddingResponse;
+use PapiAI\Core\Exception\AuthenticationException;
+use PapiAI\Core\Exception\ProviderException;
+use PapiAI\Core\Exception\RateLimitException;
 use PapiAI\Core\Message;
 use PapiAI\Core\Response;
 use PapiAI\Core\Role;
 use PapiAI\Core\StreamChunk;
 use PapiAI\Core\ToolCall;
-use PapiAI\Core\Exception\AuthenticationException;
-use PapiAI\Core\Exception\ProviderException;
-use PapiAI\Core\Exception\RateLimitException;
 use RuntimeException;
 
 /**
@@ -305,7 +305,7 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
      * @throws RateLimitException
      * @throws ProviderException
      */
-    private function throwForStatusCode(int $httpCode, ?array $data): never
+    protected function throwForStatusCode(int $httpCode, ?array $data): never
     {
         $errorMessage = $data['error']['message'] ?? 'Unknown error';
 

@@ -53,6 +53,11 @@ class TestableMistralProvider extends MistralProvider
 
         return $this->fakeEmbeddingResponse;
     }
+
+    public function callThrowForStatusCode(int $httpCode, ?array $data): never
+    {
+        $this->throwForStatusCode($httpCode, $data);
+    }
 }
 
 describe('MistralProvider', function () {
@@ -517,5 +522,23 @@ describe('MistralProvider', function () {
             expect($response->getPromptTokens())->toBe(5);
             expect($response->getTotalTokens())->toBe(5);
         });
+    });
+
+    describe('error mapping', function () {
+        it('throws AuthenticationException on 401', function () {
+            $this->provider->callThrowForStatusCode(401, ['error' => ['message' => 'Invalid key']]);
+        })->throws(PapiAI\Core\Exception\AuthenticationException::class);
+
+        it('throws RateLimitException on 429', function () {
+            $this->provider->callThrowForStatusCode(429, ['error' => ['message' => 'Too many requests']]);
+        })->throws(PapiAI\Core\Exception\RateLimitException::class);
+
+        it('throws ProviderException on 500', function () {
+            $this->provider->callThrowForStatusCode(500, ['error' => ['message' => 'Server error']]);
+        })->throws(PapiAI\Core\Exception\ProviderException::class);
+
+        it('throws ProviderException with unknown error for null data', function () {
+            $this->provider->callThrowForStatusCode(500, null);
+        })->throws(PapiAI\Core\Exception\ProviderException::class);
     });
 });
