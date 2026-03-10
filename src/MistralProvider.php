@@ -106,14 +106,6 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
      * has isComplete=true. Only text content is streamed.
      *
      * @param array<Message> $messages Conversation history as PapiAI Message objects
-     * @param array{
-     *     model?: string,
-     *     tools?: array,
-     *     maxTokens?: int,
-     *     temperature?: float,
-     *     stopSequences?: array<string>,
-     *     outputSchema?: array,
-     * } $options Request options (model, tools, maxTokens, temperature, etc.)
      *
      * @return iterable<StreamChunk> Stream of text chunks, ending with a completion marker
      *
@@ -142,7 +134,6 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
      * the mistral-embed model (or a custom model specified in options).
      *
      * @param string|array<string> $input  Text string or array of strings to embed
-     * @param array{model?: string} $options Embedding options (model override)
      *
      * @return EmbeddingResponse Embedding vectors with model info and token usage
      *
