@@ -26,6 +26,7 @@ use PapiAI\Core\Response;
 use PapiAI\Core\Role;
 use PapiAI\Core\StreamChunk;
 use PapiAI\Core\ToolCall;
+use PapiAI\Core\ToolChoice;
 use RuntimeException;
 
 /**
@@ -44,6 +45,8 @@ use RuntimeException;
  *   - mistral-embed (text embeddings)
  *
  * @see https://docs.mistral.ai/api/
+ *
+ * @psalm-import-type ChatOptions from ProviderInterface
  */
 class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
 {
@@ -75,14 +78,7 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
      * structured output, and custom generation parameters.
      *
      * @param array<Message> $messages Conversation history as PapiAI Message objects
-     * @param array{
-     *     model?: string,
-     *     tools?: array,
-     *     maxTokens?: int,
-     *     temperature?: float,
-     *     stopSequences?: array<string>,
-     *     outputSchema?: array,
-     * } $options Request options (model, tools, maxTokens, temperature, etc.)
+     * @param ChatOptions    $options  Request options (model, tools, maxTokens, temperature, toolChoice, etc.)
      *
      * @return Response Parsed response containing text, tool calls, usage, and stop reason
      *
@@ -236,6 +232,22 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
         // Handle tools
         if (isset($options['tools']) && !empty($options['tools'])) {
             $payload['tools'] = $this->convertTools($options['tools']);
+        }
+
+        // Forced tool choice. Validation lives in core and throws before any HTTP call.
+        // Mistral spells "force a tool call" as "any", where OpenAI says "required".
+        if (isset($options['toolChoice'])) {
+            $choice = ToolChoice::fromOption($options['toolChoice'], $options['tools'] ?? []);
+
+            if (!empty($options['tools'])) {
+                $payload['tool_choice'] = $choice->toolName !== null
+                    ? ['type' => 'function', 'function' => ['name' => $choice->toolName]]
+                    : match ($choice->mode) {
+                        ToolChoice::NONE => 'none',
+                        ToolChoice::REQUIRED => 'any',
+                        default => 'auto',
+                    };
+            }
         }
 
         return $payload;
