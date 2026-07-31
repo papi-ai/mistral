@@ -12,6 +12,8 @@
 
 declare(strict_types=1);
 
+use PapiAI\Core\Contracts\NamedToolSelectableInterface;
+use PapiAI\Core\Contracts\ToolSelectableInterface;
 use PapiAI\Core\Message;
 use PapiAI\Mistral\MistralProvider;
 
@@ -68,5 +70,12 @@ describe('MistralProvider tool choice', function () {
         expect(fn () => $this->provider->chat([Message::user('hi')], ['toolChoice' => 'required']))
             ->toThrow(InvalidArgumentException::class);
         expect($this->provider->lastPayload)->toBe([]);
+    });
+});
+
+describe('MistralProvider tool-selection capability', function () {
+    it('declares what it can force, so callers can ask instead of catching', function () {
+        expect(is_subclass_of(MistralProvider::class, NamedToolSelectableInterface::class))->toBeTrue();
+        expect(is_subclass_of(MistralProvider::class, ToolSelectableInterface::class))->toBeTrue();
     });
 });
