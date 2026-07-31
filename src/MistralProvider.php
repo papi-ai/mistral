@@ -46,7 +46,10 @@ use RuntimeException;
  *
  * @see https://docs.mistral.ai/api/
  *
- * @psalm-import-type ChatOptions from ProviderInterface
+ * @psalm-import-type ChatOptions from ProviderInterface *
+ * The neutral `effort` option is accepted and ignored here. Mistral exposes no reasoning-effort parameter on chat completions. Ignoring it
+ * degrades nothing the caller was promised, which is why it is silent where an unhonourable
+ * `toolChoice` throws.
  */
 class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
 {
