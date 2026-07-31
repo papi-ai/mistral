@@ -16,6 +16,7 @@ namespace PapiAI\Mistral;
 
 use Generator;
 use PapiAI\Core\Contracts\EmbeddingProviderInterface;
+use PapiAI\Core\Contracts\NamedToolSelectableInterface;
 use PapiAI\Core\Contracts\ProviderInterface;
 use PapiAI\Core\EmbeddingResponse;
 use PapiAI\Core\Exception\AuthenticationException;
@@ -51,7 +52,7 @@ use RuntimeException;
  * degrades nothing the caller was promised, which is why it is silent where an unhonourable
  * `toolChoice` throws.
  */
-class MistralProvider implements ProviderInterface, EmbeddingProviderInterface
+class MistralProvider implements ProviderInterface, EmbeddingProviderInterface, NamedToolSelectableInterface
 {
     private const API_URL = 'https://api.mistral.ai/v1/chat/completions';
     private const EMBEDDINGS_API_URL = 'https://api.mistral.ai/v1/embeddings';
