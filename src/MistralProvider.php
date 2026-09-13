@@ -57,8 +57,9 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface, 
     private const API_URL = 'https://api.mistral.ai/v1/chat/completions';
     private const EMBEDDINGS_API_URL = 'https://api.mistral.ai/v1/embeddings';
 
-    public const MODEL_MISTRAL_LARGE = 'mistral-large-latest';
-    public const MODEL_MISTRAL_EMBED = 'mistral-embed';
+    public const MODEL_MISTRAL_LARGE = MistralModel::Large->value;
+    public const MODEL_MISTRAL_MEDIUM = MistralModel::Medium->value;
+    public const MODEL_MISTRAL_EMBED = MistralModel::Embed->value;
 
     /**
      * Create a new Mistral provider instance.
