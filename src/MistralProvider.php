@@ -388,8 +388,6 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface, 
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
 
-        curl_close($ch);
-
         if ($error !== '') {
             throw new RuntimeException("Mistral API request failed: {$error}");
         }
@@ -474,7 +472,6 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface, 
         ]);
 
         curl_exec($ch);
-        curl_close($ch);
 
         // Parse SSE events
         $lines = explode("\n", $buffer);
@@ -522,8 +519,6 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface, 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-
-        curl_close($ch);
 
         if ($error !== '') {
             throw new RuntimeException("Mistral Embeddings API request failed: {$error}");
