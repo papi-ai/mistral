@@ -1,7 +1,7 @@
 {
     "name": "papi-ai/mistral",
     "description": "Mistral provider for PapiAI",
-    "type": "library",
+    "type": "papi-provider",
     "license": "MIT",
     "authors": [
         {
@@ -11,7 +11,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "papi-ai/papi-core": "^0.15.3",
+        "papi-ai/papi-core": "^0.15.4",
         "ext-curl": "*"
     },
     "require-dev": {
@@ -47,5 +47,10 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "extra": {
+        "papi": {
+            "factory": "PapiAI\\Mistral\\MistralProviderFactory"
+        }
+    }
 }

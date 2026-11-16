@@ -42,6 +42,26 @@ MistralProvider::MODEL_MISTRAL_EMBED  // 'mistral-embed' (embeddings)
 - Streaming support
 - Embeddings support
 
+## Creating It by Name
+
+An application that picks its provider from configuration can build this one without naming
+its class:
+
+```php
+use PapiAI\Core\Factory\ComposerDiscovery;
+use PapiAI\Core\Factory\ProviderRegistry;
+
+$registry = new ProviderRegistry(new ComposerDiscovery());
+
+$provider = $registry->create('mistral', [
+    'api_key' => $_ENV['MISTRAL_API_KEY'],
+]);
+```
+
+It takes `api_key` (required), `model` and `max_tokens`. Anything it is not given falls back to the
+constructor's defaults, and a missing or unknown setting throws `ConfigurationException` before any
+request is made.
+
 ## License
 
 MIT

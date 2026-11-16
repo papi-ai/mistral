@@ -17,6 +17,7 @@ use PapiAI\Core\Contracts\ProviderInterface;
 use PapiAI\Core\EmbeddingResponse;
 use PapiAI\Core\Message;
 use PapiAI\Core\Response;
+use PapiAI\Core\StopReason;
 use PapiAI\Core\StreamChunk;
 use PapiAI\Core\ToolCall;
 use PapiAI\Mistral\MistralProvider;
@@ -540,5 +541,22 @@ describe('MistralProvider', function () {
         it('throws ProviderException with unknown error for null data', function () {
             $this->provider->callThrowForStatusCode(500, null);
         })->throws(PapiAI\Core\Exception\ProviderException::class);
+    });
+});
+
+describe('MistralProvider stop reason', function () {
+    beforeEach(function () {
+        $this->provider = new TestableMistralProvider('test-api-key');
+        $this->stoppedBecause = function (string $raw): StopReason {
+            $this->provider->fakeResponse = ['choices' => [['message' => ['role' => 'assistant', 'content' => 'x'], 'finish_reason' => $raw]], 'usage' => []];
+
+            return $this->provider->chat([Message::user('Hi')])->stoppedBecause;
+        };
+    });
+
+    it('says why the model stopped in core\'s vocabulary', function () {
+        expect(($this->stoppedBecause)('stop'))->toBe(StopReason::Stop);
+        expect(($this->stoppedBecause)('length'))->toBe(StopReason::MaxTokens);
+        expect(($this->stoppedBecause)('model_length'))->toBe(StopReason::MaxTokens);
     });
 });
