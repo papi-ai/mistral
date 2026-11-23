@@ -41,6 +41,7 @@ MistralProvider::MODEL_MISTRAL_EMBED  // 'mistral-embed' (embeddings)
 - Tool/function calling
 - Streaming support
 - Embeddings support
+- Structured output, with the schema enforced by Mistral
 
 ## Creating It by Name
 
