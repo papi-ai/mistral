@@ -352,7 +352,7 @@ describe('MistralProvider', function () {
             expect($content[1]['image_url']['url'])->toBe('data:image/png;base64,base64data');
         });
 
-        it('includes output schema as json_object response_format', function () {
+        it('sends the output schema as a strict json_schema response format', function () {
             $this->provider->fakeResponse = [
                 'choices' => [
                     [
@@ -368,7 +368,8 @@ describe('MistralProvider', function () {
             $this->provider->chat([Message::user('Hello')], ['outputSchema' => $schema]);
 
             expect($this->provider->lastPayload['response_format'])->toBe([
-                'type' => 'json_object',
+                'type' => 'json_schema',
+                'json_schema' => ['name' => 'response', 'schema' => $schema, 'strict' => true],
             ]);
         });
     });

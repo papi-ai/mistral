@@ -227,10 +227,10 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface, 
             $payload['stop'] = $options['stopSequences'];
         }
 
-        // Handle structured output / JSON mode via response_format
         if (isset($options['outputSchema'])) {
             $payload['response_format'] = [
-                'type' => 'json_object',
+                'type' => 'json_schema',
+                'json_schema' => ['name' => 'response', 'schema' => $options['outputSchema'], 'strict' => true],
             ];
         }
 
