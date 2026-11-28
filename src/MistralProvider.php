@@ -475,19 +475,43 @@ class MistralProvider implements ProviderInterface, EmbeddingProviderInterface, 
 
         curl_exec($ch);
 
-        // Parse SSE events
-        $lines = explode("\n", $buffer);
-        foreach ($lines as $line) {
+        yield from $this->eventsIn((int) curl_getinfo($ch, CURLINFO_HTTP_CODE), curl_error($ch), $buffer);
+    }
+
+    /**
+     * The events of a streamed response, or the failure that came in their place: a request
+     * that never reached the API, or one it refused.
+     *
+     * @return Generator<int, array<array-key, mixed>>
+     */
+    protected function eventsIn(int $httpCode, string $transportError, string $body): Generator
+    {
+        if ($transportError !== '') {
+            throw new RuntimeException("Mistral API request failed: {$transportError}");
+        }
+
+        if ($httpCode >= 400) {
+            $refusal = json_decode($body, true);
+            $this->throwForStatusCode($httpCode, is_array($refusal) ? $refusal : null);
+        }
+
+        foreach (explode("\n", $body) as $line) {
             $line = trim($line);
-            if (str_starts_with($line, 'data: ')) {
-                $json = substr($line, 6);
-                if ($json === '[DONE]') {
-                    break;
-                }
-                $event = json_decode($json, true);
-                if ($event !== null) {
-                    yield $event;
-                }
+
+            if (!str_starts_with($line, 'data: ')) {
+                continue;
+            }
+
+            $json = substr($line, 6);
+
+            if ($json === '[DONE]') {
+                break;
+            }
+
+            $event = json_decode($json, true);
+
+            if (is_array($event)) {
+                yield $event;
             }
         }
     }
